@@ -110,7 +110,8 @@ function renderResults(events) {
         }
 
         const dateObj = new Date(timeStrRaw);
-        const timeStr = dateObj.toLocaleString();
+        const dateStr = dateObj.toLocaleDateString();
+        const timeStr = dateObj.toLocaleTimeString();
 
         const card = document.createElement('div');
         card.className = 'transit-card';
@@ -122,6 +123,7 @@ function renderResults(events) {
             <div class="transit-info">
                 <h3>${evt.satellite} across ${evt.celestial_body} <span class="transit-tag">${evt.transit_type}</span></h3>
                 <div class="transit-details">
+                    <div><strong>Date:</strong> ${dateStr}</div>
                     <div><strong>Time:</strong> ${timeStr}</div>
                     <div><strong>Separation:</strong> ${evt.separation_deg.toFixed(3)}&deg;</div>
                     <div><strong>Azimuth:</strong> ${evt.azimuth_deg.toFixed(1)}&deg;</div>
