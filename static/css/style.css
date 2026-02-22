@@ -307,25 +307,41 @@ input:focus {
 }
 
 .modal-content {
-    width: 90%;
-    max-width: 900px;
-    height: 80vh;
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    max-width: none;
     display: flex;
     flex-direction: column;
+    margin: 8px;
+    /* 8px padding around the edge */
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1rem;
+    /* Compressed height (~2/3 of previous 1rem 1.5rem) */
     border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-title-area {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
 }
 
 .modal-header h2 {
     border: none;
     margin: 0;
     padding: 0;
+    font-size: 1.2rem;
+}
+
+.modal-header p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
 }
 
 .btn-close {

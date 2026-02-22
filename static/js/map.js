@@ -2,10 +2,13 @@ let mapInstance = null;
 let currentLayer = null;
 let userMarker = null;
 
-function showMapModal(pointsJson, swathWidthKm) {
+function showMapModal(pointsJson, swathWidthKm, satellite, celestialBody, dateStr, timeStr) {
     const points = JSON.parse(decodeURIComponent(pointsJson));
     const modal = document.getElementById('map-modal');
     modal.classList.remove('hidden');
+
+    document.getElementById('modal-title').innerText = `${satellite} Transit Visibility Band`;
+    document.getElementById('modal-subtitle').innerHTML = `Across the <strong>${celestialBody}</strong> on ${dateStr} at ${timeStr}`;
 
     if (!mapInstance) {
         mapInstance = L.map('map').setView([0, 0], 2);
@@ -69,13 +72,28 @@ function showMapModal(pointsJson, swathWidthKm) {
         // Draw user's search location
         const userLat = parseFloat(document.getElementById('lat').value);
         const userLon = parseFloat(document.getElementById('lon').value);
+        const searchRadiusKm = parseFloat(document.getElementById('radius').value) || 50;
+
         if (!isNaN(userLat) && !isNaN(userLon)) {
-            userMarker = L.circleMarker([userLat, userLon], {
+            userMarker = L.featureGroup().addTo(mapInstance);
+
+            // Center Dot
+            L.circleMarker([userLat, userLon], {
                 color: '#3b82f6',
                 fillColor: '#3b82f6',
                 fillOpacity: 1,
                 radius: 6
-            }).addTo(mapInstance).bindPopup('<strong style="color:black;">Your Search Center</strong>');
+            }).addTo(userMarker).bindPopup('<strong style="color:black;">Your Search Center</strong>');
+
+            // Radius Circle (dashed)
+            L.circle([userLat, userLon], {
+                color: '#3b82f6',
+                weight: 1.5,
+                fillColor: '#3b82f6',
+                fillOpacity: 0.05,
+                dashArray: '5, 5',
+                radius: searchRadiusKm * 1000 // Leaflet radius is in meters
+            }).addTo(userMarker);
         }
 
         // Fit bounds to include both user and the swath
