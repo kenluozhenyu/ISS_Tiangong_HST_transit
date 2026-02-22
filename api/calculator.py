@@ -13,14 +13,20 @@ eph = load('de421.bsp')
 sun = eph['sun']
 moon = eph['moon']
 earth = eph['earth']
-
 def get_satellites():
-    stations_url = 'stations.txt'
-    satellites = load.tle_file(stations_url)
+    stations_url = 'visual.txt'
+    try:
+        satellites = load.tle_file(stations_url)
+    except FileNotFoundError:
+        import subprocess
+        subprocess.run(['python', 'download_tle.py'])
+        satellites = load.tle_file(stations_url)
+        
     by_name = {sat.name: sat for sat in satellites}
     return {
         'ISS': by_name.get('ISS (ZARYA)'),
-        'Tiangong': by_name.get('CSS (TIANGONG)')
+        'Tiangong': by_name.get('CSS (TIANHE)') or by_name.get('CSS (TIANGONG)'),
+        'HST': by_name.get('HST')
     }
 
 def haversine(lat1, lon1, lat2, lon2):
