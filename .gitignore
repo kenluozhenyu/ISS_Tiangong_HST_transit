@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+error_log.txt
+test_*.py
+out.txt
+err.txt
+prompt.txt
+de421.bsp
+stations.txt
+# Note: de421.bsp and stations.txt are downloaded by the app logic if missing, 
+# although current implementation expects them locally.

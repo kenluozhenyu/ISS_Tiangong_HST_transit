@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISS & Tiangong Transit Finder</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="background-animation"></div>
+
+    <header class="glass-panel">
+        <h1>Satellite Transit Finder</h1>
+        <p>Predict ISS & Tiangong transits across the Sun and Moon</p>
+    </header>
+
+    <main>
+        <div class="split-layout">
+            <!-- Input Form Section -->
+            <section class="form-section glass-panel">
+                <h2>Location & Time Parameters</h2>
+                <form id="calc-form">
+                    <div class="form-group">
+                        <label>Location Coordinates</label>
+                        <div class="loc-inputs">
+                            <input type="number" id="lat" step="any" placeholder="Latitude" required>
+                            <input type="number" id="lon" step="any" placeholder="Longitude" required>
+                            <button type="button" id="btn-geolocate" class="btn-secondary"
+                                title="Use My Location">📍</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="radius">Search Radius (km)</label>
+                        <input type="number" id="radius" value="50" min="1" max="200" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input type="date" id="start-date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input type="date" id="end-date" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="btn-calculate">Calculate Transits</button>
+                </form>
+
+                <div id="loading" class="hidden">
+                    <div class="spinner"></div>
+                    <p>Computing celestial mechanics... this may take up to 20 seconds.</p>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section glass-panel">
+                <h2>Transit Results</h2>
+                <div id="results-container">
+                    <div class="empty-state">
+                        <p>Enter parameters and click Calculate to find upcoming transits.</p>
+                    </div>
+                </div>
+
+                <!-- API Debug Console -->
+                <h2>API Debug Console</h2>
+                <div id="debug-console" class="console-window">
+                    <pre><code>Ready for API calls...</code></pre>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Map Modal -->
+    <div id="map-modal" class="modal hidden">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h2>Transit Visibility Band</h2>
+                <button id="close-modal" class="btn-close">&times;</button>
+            </div>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/static/js/map.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+
+</html>
