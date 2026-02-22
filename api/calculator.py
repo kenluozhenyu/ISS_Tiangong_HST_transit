@@ -89,12 +89,15 @@ def calculate_pass(sat, sat_name, body, body_name, topos, t0, t1, radius_km, obs
         if duration <= 0:
             continue
             
-        # Sample every 0.1 seconds for high resolution shadow path
-        samples = int(duration * 10)
-        times_array = t_rise.tt + np.arange(0, samples) / (24.0 * 3600.0 * 10)
-        times = ts.tt_jd(times_array)
+        # COARSE SEARCH: Sample every 2 seconds to find the closest approach
+        coarse_samples = int(duration / 2.0)
+        if coarse_samples < 2:
+             coarse_samples = 2
+             
+        coarse_times_array = t_rise.tt + np.arange(0, coarse_samples) * 2.0 / (24.0 * 3600.0)
+        coarse_times = ts.tt_jd(coarse_times_array)
         
-        valid, subpts = get_shadow_path(sat, body, times)
+        valid, subpts = get_shadow_path(sat, body, coarse_times)
         
         if not np.any(valid):
             continue
@@ -102,63 +105,86 @@ def calculate_pass(sat, sat_name, body, body_name, topos, t0, t1, radius_km, obs
         lats = subpts.latitude.degrees
         lons = subpts.longitude.degrees
         
-        # Calculate distance to observer for all valid shadow points
+        # Calculate distance to observer for all valid coarse shadow points
         dists = haversine(lats, lons, obs_lat, obs_lon)
-        # Apply valid mask
         dists[~valid] = np.inf
         
         min_dist_idx = np.argmin(dists)
         min_dist = dists[min_dist_idx]
         
-        if min_dist <= radius_km:
-            transit_time = times[min_dist_idx]
+        # If even the closest point in the coarse search is too far (e.g. > radius + 500km leeway), skip this pass entirely
+        if min_dist > radius_km + 500:
+            continue
             
-            # Now we need to determine if it's a Transit or Close Pass based on angular separation from the observer's POV
-            # Because the map centerline is independent of observer's exact spot, we use observer's POV to classify transit vs close pass.
+        # FINE SEARCH: we found a point close enough. Let's do high-res (0.1s) strictly around the closest coarse point
+        # Time window: +/- 10 seconds around the coarse minimum
+        fine_center_tt = coarse_times_array[min_dist_idx]
+        fine_start_tt = max(t_rise.tt, fine_center_tt - 10.0 / (24.0 * 3600.0))
+        fine_end_tt = min(t_set.tt, fine_center_tt + 10.0 / (24.0 * 3600.0))
+        
+        fine_duration_sec = (fine_end_tt - fine_start_tt) * 24.0 * 3600.0
+        fine_samples = int(fine_duration_sec * 10) # 10 frames per second
+        if fine_samples < 2:
+            continue
+            
+        fine_times_array = fine_start_tt + np.arange(0, fine_samples) / (24.0 * 3600.0 * 10)
+        fine_times = ts.tt_jd(fine_times_array)
+        
+        fine_valid, fine_subpts = get_shadow_path(sat, body, fine_times)
+        
+        if not np.any(fine_valid):
+            continue
+            
+        fine_lats = fine_subpts.latitude.degrees
+        fine_lons = fine_subpts.longitude.degrees
+        
+        fine_dists = haversine(fine_lats, fine_lons, obs_lat, obs_lon)
+        fine_dists[~fine_valid] = np.inf
+        
+        fine_min_idx = np.argmin(fine_dists)
+        fine_min_dist = fine_dists[fine_min_idx]
+        
+        if fine_min_dist <= radius_km:
+            transit_time = fine_times[fine_min_idx]
+            
+            # Now determine Transit or Close Pass based on angular separation
             body_apparent = observer.at(transit_time).observe(body).apparent()
             sat_apparent = (sat - topos).at(transit_time)
             
             body_alt, _, _ = body_apparent.altaz()
             sat_alt, sat_az, _ = sat_apparent.altaz()
             
-            # The body must be above the horizon (or slightly below)
+            # The body must be above the horizon
             if body_alt.degrees < -2.0:
                 continue
 
             sep = body_apparent.separation_from(sat_apparent).degrees
-            transit_type = "Transit" if sep < (0.27 + 0.01) else "Close Pass" # Sun/Moon angular radius is ~0.26 deg
-            # Filter completely irrelevant passes if sep is too large
+            transit_type = "Transit" if sep < (0.27 + 0.01) else "Close Pass" 
+            
             if sep > 5.0:
                  continue
                  
             # Calculate Swath Width
             sat_dist_km = sat_apparent.distance().km
             body_dist_km = body_apparent.distance().km
-            if body_name == "Sun":
-                body_radius_km = 696340.0
-            else:
-                body_radius_km = 1737.4
+            body_radius_km = 696340.0 if body_name == "Sun" else 1737.4
             
             angular_radius_rad = np.arcsin(body_radius_km / body_dist_km)
             swath_radius_km = sat_dist_km * np.tan(angular_radius_rad)
             swath_width_km = float(swath_radius_km * 2)
                  
             # Extract the active segment of the shadow path for the map 
-            # (e.g., +/- 10 seconds around transit)
-            start_idx = max(0, min_dist_idx - 100)
-            end_idx = min(len(times), min_dist_idx + 100)
-            
             path_points = []
-            for j in range(start_idx, end_idx):
-                if valid[j]:
-                    path_points.append(TransitPoint(lat=float(lats[j]), lon=float(lons[j])))
+            for j in range(fine_samples):
+                if fine_valid[j]:
+                    path_points.append(TransitPoint(lat=float(fine_lats[j]), lon=float(fine_lons[j])))
                     
             results.append(TransitEvent(
                 satellite=sat_name,
                 celestial_body=body_name,
                 transit_type=transit_type,
                 time_utc=transit_time.utc_datetime().isoformat() + "Z",
-                duration_sec=1.5, # Will make accurate duration later if needed
+                duration_sec=1.5,
                 swath_width_km=swath_width_km,
                 separation_deg=float(sep),
                 azimuth_deg=float(sat_az.degrees),
