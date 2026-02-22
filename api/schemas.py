@@ -18,6 +18,7 @@ class TransitEvent(BaseModel):
     transit_type: str # "Transit" or "Close Pass"
     time_utc: str
     duration_sec: float
+    swath_width_km: float
     separation_deg: float
     azimuth_deg: float
     elevation_deg: float

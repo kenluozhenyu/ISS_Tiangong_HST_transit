@@ -131,7 +131,7 @@ function renderResults(events) {
                 </div>
             </div>
             <div class="transit-actions">
-                <button class="btn-map" onclick="showMapModal('${safePoints}')">SHOW ON MAP</button>
+                <button class="btn-map" onclick="showMapModal('${safePoints}', ${evt.swath_width_km})">SHOW ON MAP</button>
             </div>
         `;
         container.appendChild(card);

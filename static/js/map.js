@@ -1,8 +1,8 @@
 let mapInstance = null;
-let currentPolyline = null;
+let currentLayer = null;
 let userMarker = null;
 
-function showMapModal(pointsJson) {
+function showMapModal(pointsJson, swathWidthKm) {
     const points = JSON.parse(decodeURIComponent(pointsJson));
     const modal = document.getElementById('map-modal');
     modal.classList.remove('hidden');
@@ -21,8 +21,8 @@ function showMapModal(pointsJson) {
     setTimeout(() => {
         mapInstance.invalidateSize();
 
-        if (currentPolyline) {
-            mapInstance.removeLayer(currentPolyline);
+        if (currentLayer) {
+            mapInstance.removeLayer(currentLayer);
         }
         if (userMarker) {
             mapInstance.removeLayer(userMarker);
@@ -30,32 +30,58 @@ function showMapModal(pointsJson) {
 
         const latLngs = points.map(p => [p.lat, p.lon]);
 
-        // Draw the transit band centerline
-        currentPolyline = L.polyline(latLngs, {
-            color: '#38bdf8', // Neon blue
-            weight: 4,
-            opacity: 0.9,
-            lineCap: 'round',
-            lineJoin: 'round'
-        }).addTo(mapInstance);
+        // Use Turf to create a polygon if we have a swath width
+        if (typeof turf !== 'undefined' && swathWidthKm && latLngs.length >= 2) {
+            const turfLngLats = points.map(p => [p.lon, p.lat]);
+            const line = turf.lineString(turfLngLats);
+            const radius = swathWidthKm / 2;
+            const buffered = turf.buffer(line, radius, { units: 'kilometers' });
+
+            currentLayer = L.geoJSON(buffered, {
+                style: function (feature) {
+                    return {
+                        color: '#ef4444',
+                        weight: 2,
+                        fillColor: '#ef4444',
+                        fillOpacity: 0.3
+                    };
+                }
+            }).addTo(mapInstance);
+
+            // Add centerline to the layer group
+            L.polyline(latLngs, {
+                color: '#ef4444',
+                weight: 2,
+                dashArray: '5, 5'
+            }).addTo(currentLayer);
+
+        } else {
+            // Draw the transit band centerline only
+            currentLayer = L.polyline(latLngs, {
+                color: '#ef4444',
+                weight: 4,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(mapInstance);
+        }
 
         // Draw user's search location
         const userLat = parseFloat(document.getElementById('lat').value);
         const userLon = parseFloat(document.getElementById('lon').value);
         if (!isNaN(userLat) && !isNaN(userLon)) {
             userMarker = L.circleMarker([userLat, userLon], {
-                color: '#f43f5e',
-                fillColor: '#f43f5e',
+                color: '#3b82f6',
+                fillColor: '#3b82f6',
                 fillOpacity: 1,
                 radius: 6
             }).addTo(mapInstance).bindPopup('<strong style="color:black;">Your Search Center</strong>');
         }
 
         // Fit bounds to include both user and the swath
-        const group = new L.featureGroup([currentPolyline]);
-        if (userMarker) {
-            group.addLayer(userMarker);
-        }
+        const group = new L.featureGroup();
+        if (currentLayer) group.addLayer(currentLayer);
+        if (userMarker) group.addLayer(userMarker);
 
         mapInstance.fitBounds(group.getBounds(), { padding: [50, 50] });
     }, 200);

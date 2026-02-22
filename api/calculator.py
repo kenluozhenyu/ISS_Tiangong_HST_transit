@@ -125,6 +125,18 @@ def calculate_pass(sat, sat_name, body, body_name, topos, t0, t1, radius_km, obs
             if sep > 5.0:
                  continue
                  
+            # Calculate Swath Width
+            sat_dist_km = sat_apparent.distance().km
+            body_dist_km = body_apparent.distance().km
+            if body_name == "Sun":
+                body_radius_km = 696340.0
+            else:
+                body_radius_km = 1737.4
+            
+            angular_radius_rad = np.arcsin(body_radius_km / body_dist_km)
+            swath_radius_km = sat_dist_km * np.tan(angular_radius_rad)
+            swath_width_km = float(swath_radius_km * 2)
+                 
             # Extract the active segment of the shadow path for the map 
             # (e.g., +/- 10 seconds around transit)
             start_idx = max(0, min_dist_idx - 100)
@@ -141,6 +153,7 @@ def calculate_pass(sat, sat_name, body, body_name, topos, t0, t1, radius_km, obs
                 transit_type=transit_type,
                 time_utc=transit_time.utc_datetime().isoformat() + "Z",
                 duration_sec=1.5, # Will make accurate duration later if needed
+                swath_width_km=swath_width_km,
                 separation_deg=float(sep),
                 azimuth_deg=float(sat_az.degrees),
                 elevation_deg=float(sat_alt.degrees),
