@@ -86,5 +86,32 @@ Main Process                     Worker Processes (CPU cores)
 4.  **Access the UI**:
     Open `http://localhost:8080` in your browser.
 
+## 🛰️ Adding Custom Satellites
+
+The system uses a `satellites.conf` configuration file — **no code changes required** to add new satellites.
+
+### Configuration Format
+
+```ini
+[tle_sources]
+visual.txt          # Celestrak Visual group (auto-downloaded)
+custom_sats.txt     # Your custom TLE data file
+
+[satellites]
+ISS = ISS (ZARYA)
+Tiangong = CSS (TIANHE)
+HST = HST
+KH-11 13 = NROL-65 (USA 245)   # Custom satellite from custom_sats.txt
+```
+
+### Steps to Add a New Satellite
+
+1. **Obtain TLE data** for the satellite (from [Celestrak](https://celestrak.org), [Space-Track.org](https://www.space-track.org), or amateur tracking networks).
+2. **Append the TLE** (3-line format: name + line 1 + line 2) to `custom_sats.txt` in the project root.
+3. **Register it** in `satellites.conf` under `[satellites]` as `DisplayName = TLE Catalog Name`.
+4. **Restart the server**.
+
+> **Note**: Some satellites (e.g., KH-11 / CRYSTAL reconnaissance satellites) are classified military assets. Their TLEs are **not** available from Celestrak's public API. You'll need to source them from Space-Track.org (free account required) or amateur observer networks.
+
 ## 📝 License
 MIT License. Created by Antigravity AI Assistant.

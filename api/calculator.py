@@ -19,22 +19,83 @@ earth = eph['earth']
 # Use all available CPU cores, leaving 1 for the main thread
 _MAX_WORKERS = max(1, os.cpu_count() - 1)
 
-def get_satellites():
-    stations_url = 'visual.txt'
+def _parse_config(path='satellites.conf'):
+    """Parse the satellites.conf file into tle_sources and satellite mappings."""
+    tle_sources = []
+    satellite_map = {}  # display_name -> list of possible TLE catalog names
+    section = None
+
     try:
-        satellites = load.tle_file(stations_url)
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if line == '[tle_sources]':
+                    section = 'tle'
+                    continue
+                elif line == '[satellites]':
+                    section = 'sat'
+                    continue
+
+                if section == 'tle':
+                    tle_sources.append(line)
+                elif section == 'sat' and '=' in line:
+                    display, catalog = line.split('=', 1)
+                    display = display.strip()
+                    catalog = catalog.strip()
+                    # Handle alternate names (e.g. Tiangong_alt maps to same display)
+                    base_name = display.rstrip('_alt').replace('_alt', '')
+                    if base_name in satellite_map:
+                        satellite_map[base_name].append(catalog)
+                    else:
+                        satellite_map[display] = [catalog]
     except FileNotFoundError:
+        # Fallback defaults
+        tle_sources = ['visual.txt']
+        satellite_map = {
+            'ISS': ['ISS (ZARYA)'],
+            'Tiangong': ['CSS (TIANHE)', 'CSS (TIANGONG)'],
+            'HST': ['HST'],
+        }
+    
+    return tle_sources, satellite_map
+
+
+def get_satellites():
+    tle_sources, satellite_map = _parse_config()
+
+    # Load all TLE files and merge into one name lookup
+    by_name = {}
+    for source in tle_sources:
+        try:
+            sats = load.tle_file(source)
+            for s in sats:
+                by_name[s.name] = s
+        except FileNotFoundError:
+            continue
+
+    if not by_name:
+        # Try downloading
         import subprocess
         subprocess.run(['python', 'download_tle.py'])
-        satellites = load.tle_file(stations_url)
-
-    by_name = {sat.name: sat for sat in satellites}
-    return {
-        'ISS': by_name.get('ISS (ZARYA)'),
-        'Tiangong': by_name.get('CSS (TIANHE)') or by_name.get('CSS (TIANGONG)'),
-        'HST': by_name.get('HST'),
-        'KH-11 13': by_name.get('USA-245')
-    }
+        for source in tle_sources:
+            try:
+                sats = load.tle_file(source)
+                for s in sats:
+                    by_name[s.name] = s
+            except FileNotFoundError:
+                continue
+    
+    # Resolve display names to actual satellite objects
+    result = {}
+    for display_name, catalog_names in satellite_map.items():
+        for name in catalog_names:
+            if name in by_name:
+                result[display_name] = by_name[name]
+                break
+    
+    return result
 
 # ── Pure math helpers (no Skyfield objects, pickle-safe) ───────────────
 def haversine(lat1, lon1, lat2, lon2):
